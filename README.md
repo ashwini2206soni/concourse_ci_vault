@@ -71,7 +71,7 @@ mv out vault-certs
 
 
 
-### Exercise #2: Setting up docker-compose file for Concourse CI
+### Exercise #2: Setting up docker-compose file for Concourse CI and Vault
 
 ### Exercise #3: Using Vault cli to add credentials to Vault
 
