@@ -20,28 +20,44 @@ This lab is for local testing purposes, configure security for any production us
     * [docker](https://docs.docker.com/install/linux/docker-ce/ubuntu/)
     * [vault](https://www.vaultproject.io/docs/install/)
     * [certify](https://github.com/square/certstrap)
-    * [concourse-docker repo](https://github.com/concourse/concourse-docker)
+
+3. Read reference documentation for troubleshooting issues
+    * Steps follow deployment procedure from [concourse-docker repo](https://github.com/concourse/concourse-docker)
+    * Vault integration steps followed on [Concourse Creds documentation](https://concourse-ci.org/vault-credential-manager.html)
 
 ### Exercise #1: Generate keys and certificates for Concourse and Vault
 
-First steps will be to clone the [concourse-docker repo](https://github.com/concourse/concourse-docker).
+First steps will be to generate the keys needed for concourse web and worker nodes
 
+The following script uses the concourse docker image to generate the keys and place them in keys/web and keys/worker directories
+
+generate_keys.sh
 ```sh
-$ git clone https://github.com/concourse/concourse-docker
+#!/usr/bin/env bash
+
+set -e -u
+
+cd $(dirname $0)
+
+docker run --rm -v $PWD/keys/web:/keys concourse/concourse \
+generate-key -t rsa -f /keys/session_signing_key
+
+docker run --rm -v $PWD/keys/web:/keys concourse/concourse \
+generate-key -t ssh -f /keys/tsa_host_key
+
+docker run --rm -v $PWD/keys/worker:/keys concourse/concourse \
+generate-key -t ssh -f /keys/worker_key
+
+cp ./keys/worker/worker_key.pub ./keys/web/authorized_worker_keys
+cp ./keys/web/tsa_host_key.pub ./keys/worker
 ```
 
-Change directory to run the key generator script to create the keys for concourse web and worker nodes, then switch back to the project root
-```sh
-$ cd concourse-docker/keys/
-$ sudo ./generate
-$ cd ..
-```
 
+Next, we will generate a tls-cert to be used for authentication between the concourse web node and vault
 
-Next, we will generate a tls-cert to be used for authentication between the concourse web node and vault.
+The following script will init a local CA authority and generate the certs needed
 
-The following script will init a local CA authority and generate the certs needed.
-
+generate_certs.sh
 ```bash
 #!/bin/bash
 
@@ -51,13 +67,6 @@ certstrap sign vault --CA vault-ca
 certstrap request-cert --cn concourse
 certstrap sign concourse --CA vault-ca
 mv out vault-certs
-```
-
-Ex
-
-```sh
-$ cd ..
-
 ```
 
 
