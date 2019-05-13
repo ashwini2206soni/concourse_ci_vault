@@ -27,17 +27,39 @@ This lab is for local testing purposes, configure security for any production us
 First steps will be to clone the [concourse-docker repo](https://github.com/concourse/concourse-docker).
 
 ```sh
-git clone https://github.com/concourse/concourse-docker
+$ git clone https://github.com/concourse/concourse-docker
 ```
 
-Change directory to run the key generator script to create the keys for concourse web and worker nodes
-
+Change directory to run the key generator script to create the keys for concourse web and worker nodes, then switch back to the project root
 ```sh
 $ cd concourse-docker/keys/
-$ ./generate
+$ sudo ./generate
+$ cd ..
 ```
 
-Next, run the following script to create certificates for Concourse Web node and Vault
+
+Next, we will generate a tls-cert to be used for authentication between the concourse web node and vault.
+
+The following script will init a local CA authority and generate the certs needed.
+
+```bash
+#!/bin/bash
+
+certstrap init --cn vault-ca
+certstrap request-cert --domain vault --ip 127.0.0.1
+certstrap sign vault --CA vault-ca
+certstrap request-cert --cn concourse
+certstrap sign concourse --CA vault-ca
+mv out vault-certs
+```
+
+Ex
+
+```sh
+$ cd ..
+
+```
+
 
 
 ### Exercise #2: Setting up docker-compose file for Concourse CI
