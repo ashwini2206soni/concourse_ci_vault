@@ -32,7 +32,7 @@ First steps will be to generate the keys needed for concourse web and worker nod
 The following script uses the concourse docker image to generate the keys and place them in keys/web and keys/worker directories
 
 ```console
-./generate_keys.sh
+$ ./generate_keys.sh
 ```
   
 ```bash
@@ -66,7 +66,7 @@ Next, we will generate a tls-cert to be used for authentication between the conc
 The following script will init a local CA authority and generate the certs needed
 
 ```console
-./generate_certs.sh
+$ ./generate_certs.sh
 ```
 
 ```bash
@@ -90,12 +90,12 @@ We will use docker-compose to set-up the environment. Included in this repo is a
 To run the docker-compose file, run the following
 
 ```console
-docker-compose up -d
+$ docker-compose up -d
 ```
 
 If successful you will see the following output when running `docker container ls`
 ```console
-ben@ben-dev:~/blog_projects/concourse_ci_vault$ docker container ls
+$ docker container ls
 CONTAINER ID        IMAGE                 COMMAND                  CREATED              STATUS              PORTS                    NAMES
 288054bf2478        concourse/concourse   "dumb-init /usr/loca…"   About a minute ago   Up About a minute                            concourse_ci_vault_worker_1
 9083e13ed496        concourse/concourse   "dumb-init /usr/loca…"   About a minute ago   Up About a minute   0.0.0.0:8080->8080/tcp   concourse_ci_vault_web_1
@@ -113,10 +113,64 @@ Now that we have concourse and vault up, let's initialize vault for concourse to
 Set the local environment variable and run the init command for vault
 
 ```console
-export VAULT_CACERT=$PWD/vault-certs/vault-ca.crt
+$ export VAULT_CACERT=$PWD/vault-certs/vault-ca.crt
+$ vault operator init
+Unseal Key 1: key1
+Unseal Key 2: key2
+Unseal Key 3: key3
+Unseal Key 4: key4
+Unseal Key 5: key5
 
-vault operator init
+Initial Root Token: roottoken
+
+Vault initialized with 5 key shares and a key threshold of 3. Please securely
+distribute the key shares printed above. When the Vault is re-sealed,
+restarted, or stopped, you must supply at least 3 of these keys to unseal it
+before it can start servicing requests.
+
+Vault does not store the generated master key. Without at least 3 key to
+reconstruct the master key, Vault will remain permanently sealed!
+
+It is possible to generate new unseal keys, provided you have a quorum of
+existing unseal keys shares. See "vault operator rekey" for more information.
 ```
 
+Use at least 3 keys to unseal vault and login with the root token
+
+```console
+$ vault operator unseal # paste unseal key 1
+$ vault operator unseal # paste unseal key 2
+$ vault operator unseal # paste unseal key 3
+$ vault login           # paste root token
+```
+
+Now we enable the cert backend to allow concourse to authenticate to vault.  
+
+You can use the following script to enable the cert backend and secrets engine.
+
+```console
+$ ./generate_concourse_policy.sh
+```
+
+```bash
+#!/bin/bash
+
+vault policy write concourse vault-config/concourse-policy.hcl
+
+vault auth enable cert
+
+vault write auth/cert/certs/concourse \
+policies=concourse \
+certificate=@vault-certs/vault-ca.crt \
+ttl=1h
+
+vault secrets enable -path=concourse/ kv
+```
+
+Add a sample secret to vault to test the path is enabled
+
+```console
+$ vault kv put concourse/main/demo_value TEST=HELLOWORLD
+```
 
 ### Exercise #4: Test credentials using a Concourse pipeline

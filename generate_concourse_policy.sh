@@ -8,3 +8,5 @@ vault write auth/cert/certs/concourse \
 policies=concourse \
 certificate=@vault-certs/vault-ca.crt \
 ttl=1h
+
+vault secrets enable -path=concourse/ kv
