@@ -13,5 +13,5 @@ generate-key -t ssh -f /keys/tsa_host_key
 docker run --rm -v $PWD/keys/worker:/keys concourse/concourse \
 generate-key -t ssh -f /keys/worker_key
 
-cp ./keys/worker/worker_key.pub ./keys/web/authorized_worker_keys
-cp ./keys/web/tsa_host_key.pub ./keys/worker
+cp $PWD/keys/worker/worker_key.pub $PWD/keys/web/authorized_worker_keys
+cp $PWD/keys/web/tsa_host_key.pub $PWD/keys/worker

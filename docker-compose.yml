@@ -14,8 +14,8 @@ services:
     depends_on: [db]
     ports: ["8200:8200"]
     volumes:
-    - ./vault-certs:/vault/certs
-    - ./vault-config:/vault/config
+      - ./vault-certs:/vault/certs
+      - ./vault-config:/vault/config
     command: server
 
   web:
@@ -24,7 +24,9 @@ services:
     links: [db]
     depends_on: [vault]
     ports: ["8080:8080"]
-    volumes: ["./keys/web:/concourse-keys","./vault-certs:/vault-certs"]
+    volumes: 
+      - ./keys/web:/concourse-keys
+      - ./vault-certs:/vault-certs
     environment:
       CONCOURSE_EXTERNAL_URL: http://localhost:8080
       CONCOURSE_POSTGRES_HOST: db
@@ -44,7 +46,8 @@ services:
     command: worker
     privileged: true
     depends_on: [web]
-    volumes: ["./keys/worker:/concourse-keys"]
+    volumes: 
+      - ./keys/worker:/concourse-keys
     links: [web]
     stop_signal: SIGUSR2
     environment:

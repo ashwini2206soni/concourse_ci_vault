@@ -2,7 +2,7 @@
 
 Concourse CI is a simple CI/CD tool that leverages containers to manage tasks for clean execution of pipelines. Vault is an API driven secrets management platform that allows a secure centralized source of housing credentials.
 
-This lab is for local testing purposes, configure security for any production usage.
+This lab is for local testing purposes only, not recommended for any production usage.
 
 ## What's covered in this lab
 
@@ -68,10 +68,28 @@ certstrap request-cert --cn concourse
 certstrap sign concourse --CA vault-ca
 mv out vault-certs
 ```
-
-
-
+  
+  
 ### Exercise #2: Setting up docker-compose file for Concourse CI and Vault
+
+We will use docker-compose to set-up the environment. Included in this repo is a `docker-compose.yml` file that uses the certs and keys generated to init concourse web/workers and vault.
+
+To run the docker-compose file, run the following
+
+```console
+sudo docker-compose up -d
+```
+
+If successful you will see the following output when running `docker container ls`
+```console
+ben@ben-dev:~/docker/compose/concourse-docker$ docker container ls
+CONTAINER ID        IMAGE                 COMMAND                  CREATED             STATUS              PORTS                    NAMES
+490a89b36ed1        concourse/concourse   "dumb-init /usr/loca…"   3 hours ago         Up 3 hours                                   concourse-docker_worker_1
+4bc3702c3397        concourse/concourse   "dumb-init /usr/loca…"   3 hours ago         Up 3 hours          0.0.0.0:8080->8080/tcp   concourse-docker_web_1
+6a94c7abdfc1        vault                 "docker-entrypoint.s…"   3 hours ago         Up 3 hours          0.0.0.0:8200->8200/tcp   concourse-docker_vault_1
+ffa2287af325        postgres              "docker-entrypoint.s…"   3 hours ago         Up 3 hours          5432/tcp                 concourse-docker_db_1
+```
+
 
 ### Exercise #3: Using Vault cli to add credentials to Vault
 
