@@ -31,8 +31,11 @@ First steps will be to generate the keys needed for concourse web and worker nod
 
 The following script uses the concourse docker image to generate the keys and place them in keys/web and keys/worker directories
 
-generate_keys.sh
-```sh
+```console
+./generate_keys.sh
+```
+  
+```bash
 #!/usr/bin/env bash
 
 set -e -u
@@ -48,8 +51,13 @@ generate-key -t ssh -f /keys/tsa_host_key
 docker run --rm -v $PWD/keys/worker:/keys concourse/concourse \
 generate-key -t ssh -f /keys/worker_key
 
-cp ./keys/worker/worker_key.pub ./keys/web/authorized_worker_keys
-cp ./keys/web/tsa_host_key.pub ./keys/worker
+```
+
+Copy pub keys from web to workers and vice-versa
+
+```console
+sudo cp -f ./keys/worker/worker_key.pub ./keys/web/authorized_worker_keys
+sudo cp -f ./keys/web/tsa_host_key.pub ./keys/worker
 ```
 
 
@@ -57,15 +65,20 @@ Next, we will generate a tls-cert to be used for authentication between the conc
 
 The following script will init a local CA authority and generate the certs needed
 
-generate_certs.sh
+```console
+./generate_certs.sh
+```
+
 ```bash
 #!/bin/bash
 
-certstrap init --cn vault-ca
-certstrap request-cert --domain vault --ip 127.0.0.1
-certstrap sign vault --CA vault-ca
-certstrap request-cert --cn concourse
-certstrap sign concourse --CA vault-ca
+# Generate keys for concourse web and worker nodes
+
+certstrap init --cn vault-ca --passphrase ""
+certstrap request-cert --domain vault --ip 127.0.0.1 --passphrase ""
+certstrap sign vault --CA vault-ca --passphrase ""
+certstrap request-cert --cn concourse --passphrase ""
+certstrap sign concourse --CA vault-ca --passphrase ""
 mv out vault-certs
 ```
   
@@ -77,20 +90,33 @@ We will use docker-compose to set-up the environment. Included in this repo is a
 To run the docker-compose file, run the following
 
 ```console
-sudo docker-compose up -d
+docker-compose up -d
 ```
 
 If successful you will see the following output when running `docker container ls`
 ```console
-ben@ben-dev:~/docker/compose/concourse-docker$ docker container ls
-CONTAINER ID        IMAGE                 COMMAND                  CREATED             STATUS              PORTS                    NAMES
-490a89b36ed1        concourse/concourse   "dumb-init /usr/loca…"   3 hours ago         Up 3 hours                                   concourse-docker_worker_1
-4bc3702c3397        concourse/concourse   "dumb-init /usr/loca…"   3 hours ago         Up 3 hours          0.0.0.0:8080->8080/tcp   concourse-docker_web_1
-6a94c7abdfc1        vault                 "docker-entrypoint.s…"   3 hours ago         Up 3 hours          0.0.0.0:8200->8200/tcp   concourse-docker_vault_1
-ffa2287af325        postgres              "docker-entrypoint.s…"   3 hours ago         Up 3 hours          5432/tcp                 concourse-docker_db_1
+ben@ben-dev:~/blog_projects/concourse_ci_vault$ docker container ls
+CONTAINER ID        IMAGE                 COMMAND                  CREATED              STATUS              PORTS                    NAMES
+288054bf2478        concourse/concourse   "dumb-init /usr/loca…"   About a minute ago   Up About a minute                            concourse_ci_vault_worker_1
+9083e13ed496        concourse/concourse   "dumb-init /usr/loca…"   About a minute ago   Up About a minute   0.0.0.0:8080->8080/tcp   concourse_ci_vault_web_1
+1efd97078b52        vault                 "docker-entrypoint.s…"   About a minute ago   Up About a minute   0.0.0.0:8200->8200/tcp   concourse_ci_vault_vault_1
+9b963b7e9917        postgres              "docker-entrypoint.s…"   About a minute ago   Up About a minute   5432/tcp                 concourse_ci_vault_db_1
 ```
+
+Open your browser and check `http://localhost:8080` for concourse and `https://localhost:8200` for vault.
 
 
 ### Exercise #3: Using Vault cli to add credentials to Vault
+
+Now that we have concourse and vault up, let's initialize vault for concourse to use.
+
+Set the local environment variable and run the init command for vault
+
+```console
+export VAULT_CACERT=$PWD/vault-certs/vault-ca.crt
+
+vault operator init
+```
+
 
 ### Exercise #4: Test credentials using a Concourse pipeline
