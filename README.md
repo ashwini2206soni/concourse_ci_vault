@@ -6,13 +6,13 @@ This lab is for local testing purposes only, not recommended for any production 
 
 ## What's covered in this lab
 
-1. Using docker-compose to stand up a local test environment of Concourse CI
+1. Generate keys and certs for Concourse CI and Vault to use as auth methods
 
-2. Integrate Vault as a credentials/variable manager for Concourse CI
+2. Using docker-compose to deploy a local test environment
 
-3. Push credentials to Vault via cli 
+3. Initialize Vault and push secrets via cli
 
-4. Run sample task to test access to secrets in Concourse CI
+4. Run sample task to test access to Vault secrets in Concourse CI
 
 ## Before you begin
 
@@ -27,11 +27,13 @@ This lab is for local testing purposes only, not recommended for any production 
     * Steps follow deployment procedure from [concourse-docker repo](https://github.com/concourse/concourse-docker)
     * Vault integration steps followed on [Concourse Creds documentation](https://concourse-ci.org/vault-credential-manager.html)
 
+4. The repo for this lab is available on [GitHub](https://github.com/spr-ben-ngo/concourse_ci_vault)
+
 ### Exercise #1: Generate keys and certificates for Concourse and Vault
 
-First steps will be to generate the keys needed for concourse web and worker nodes
+First steps will be to generate the keys needed for Concourse web and worker nodes.
 
-The following script uses the Concourse docker image to generate the keys and place them in keys/web and keys/worker directories
+The following script uses the Concourse docker image to generate the keys and place them in keys/web and keys/worker directories.
 
 ```console
 $ ./generate_keys.sh
@@ -55,7 +57,7 @@ generate-key -t ssh -f /keys/worker_key
 
 ```
 
-Copy pub keys from web to workers and vice-versa
+Copy pub keys from web to workers and vice-versa.
 
 ```console
 sudo cp -f ./keys/worker/worker_key.pub ./keys/web/authorized_worker_keys
@@ -63,9 +65,9 @@ sudo cp -f ./keys/web/tsa_host_key.pub ./keys/worker
 ```
 
 
-Next, we will generate a tls-cert to be used for authentication between the Concourse web node and Vault
+Next, we will generate a tls-cert to be used for authentication between the Concourse web node and Vault.
 
-The following script will init a local CA authority and generate the certs needed
+The following script will init a local CA authority and generate the certs needed.
 
 ```console
 $ ./generate_certs.sh
@@ -89,7 +91,7 @@ mv out vault-certs
 
 We will use docker-compose to set-up the environment. Included in this repo is a `docker-compose.yml` file that uses the certs and keys generated to init Concourse web/workers and Vault.
 
-To run the docker-compose file, run the following
+To run the docker-compose file, run the following;
 
 ```console
 $ docker-compose up -d
@@ -105,14 +107,14 @@ CONTAINER ID        IMAGE                 COMMAND                  CREATED      
 9b963b7e9917        postgres              "docker-entrypoint.s…"   About a minute ago   Up About a minute   5432/tcp                 concourse_ci_vault_db_1
 ```
 
-Open your browser and check `http://localhost:8080` for concourse and `https://localhost:8200` for vault.
+Open your browser and check `http://localhost:8080` for Concourse and `https://localhost:8200` for Vault.
 
 
 ### Exercise #3: Using Vault cli to add credentials to Vault
 
 Now that we have Concourse and Vault up, let's initialize Vault for Concourse to use.
 
-Set the local environment variable and run the init command for Vault
+Set the local environment variable and run the init command for Vault.
 
 ```console
 $ export VAULT_CACERT=$PWD/vault-certs/vault-ca.crt
@@ -137,7 +139,7 @@ It is possible to generate new unseal keys, provided you have a quorum of
 existing unseal keys shares. See "vault operator rekey" for more information.
 ```
 
-Use at least 3 keys to unseal Vault and login with the root token
+Use at least 3 keys to unseal Vault and login with the root token.
 
 ```console
 $ vault operator unseal # paste unseal key 1
@@ -146,7 +148,7 @@ $ vault operator unseal # paste unseal key 3
 $ vault login           # paste root token
 ```
 
-Now we enable the cert backend to allow concourse to authenticate to Vault.  
+Now we enable the cert backend to allow Concourse to authenticate to Vault.  
 
 You can use the following script to enable the cert backend and secrets engine.
 
@@ -177,9 +179,11 @@ $ vault kv put concourse/main/demo_value TEST=HELLOWORLD
 
 ### Exercise #4: Test secret using a Concourse pipeline
 
-Now to test concourse is able to access the secret stored in Vault.
+Now to test Concourse is able to access the secret stored in Vault.
 
-Login to concourse using the following commands
+Open the browser to [http://localhost:8080](http://localhost:8080), login with username `test` and password `test` and proceed to download the fly cli. Make sure to set it as an executable and add it to your local usr/bin.
+
+Login to Concourse using the following commands;
 
 ```console
 $ sudo fly --target tutorial login --concourse-url http://127.0.0.1:8080 -u test -p test
@@ -191,7 +195,7 @@ $ sudo fly --target tutorial sync
 version 5.1.0 already matches; skipping
 ```
 
-Now use the sample Concourse task to test if we can access the secret and use it in a task.
+Now use the [sample Concourse task](./.ci/sample.yml) to test if we can access the secret and use it in a task.
 
 ```console
 $ sudo fly -t tutorial execute -c .ci/sample.yml 
@@ -206,4 +210,4 @@ succeeded
 
 You can also browse to [http://127.0.0.1:8080/builds/1](http://127.0.0.1:8080/builds/1) to see your build in the Concourse web console.
 
-And that's a wrap with this tutorial! Hopefully this demo provides a better understanding of both Concourse CI and Vault and their uses for managing sensitive values.
+And that's a wrap! Hopefully this lab provides a better understanding of both Concourse CI and Vault and their uses for managing sensitive values.
