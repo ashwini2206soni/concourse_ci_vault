@@ -10,7 +10,9 @@ This lab is for local testing purposes only, not recommended for any production 
 
 2. Integrate Vault as a credentials/variable manager for Concourse CI
 
-3. Push credentials to Vault via cli and test usage in Concourse CI
+3. Push credentials to Vault via cli 
+
+4. Run sample task to test access to secrets in Concourse CI
 
 ## Before you begin
 
@@ -29,7 +31,7 @@ This lab is for local testing purposes only, not recommended for any production 
 
 First steps will be to generate the keys needed for concourse web and worker nodes
 
-The following script uses the concourse docker image to generate the keys and place them in keys/web and keys/worker directories
+The following script uses the Concourse docker image to generate the keys and place them in keys/web and keys/worker directories
 
 ```console
 $ ./generate_keys.sh
@@ -61,7 +63,7 @@ sudo cp -f ./keys/web/tsa_host_key.pub ./keys/worker
 ```
 
 
-Next, we will generate a tls-cert to be used for authentication between the concourse web node and vault
+Next, we will generate a tls-cert to be used for authentication between the Concourse web node and Vault
 
 The following script will init a local CA authority and generate the certs needed
 
@@ -85,7 +87,7 @@ mv out vault-certs
   
 ### Exercise #2: Setting up docker-compose file for Concourse CI and Vault
 
-We will use docker-compose to set-up the environment. Included in this repo is a `docker-compose.yml` file that uses the certs and keys generated to init concourse web/workers and vault.
+We will use docker-compose to set-up the environment. Included in this repo is a `docker-compose.yml` file that uses the certs and keys generated to init Concourse web/workers and Vault.
 
 To run the docker-compose file, run the following
 
@@ -108,9 +110,9 @@ Open your browser and check `http://localhost:8080` for concourse and `https://l
 
 ### Exercise #3: Using Vault cli to add credentials to Vault
 
-Now that we have concourse and vault up, let's initialize vault for concourse to use.
+Now that we have Concourse and Vault up, let's initialize Vault for Concourse to use.
 
-Set the local environment variable and run the init command for vault
+Set the local environment variable and run the init command for Vault
 
 ```console
 $ export VAULT_CACERT=$PWD/vault-certs/vault-ca.crt
@@ -135,7 +137,7 @@ It is possible to generate new unseal keys, provided you have a quorum of
 existing unseal keys shares. See "vault operator rekey" for more information.
 ```
 
-Use at least 3 keys to unseal vault and login with the root token
+Use at least 3 keys to unseal Vault and login with the root token
 
 ```console
 $ vault operator unseal # paste unseal key 1
@@ -144,7 +146,7 @@ $ vault operator unseal # paste unseal key 3
 $ vault login           # paste root token
 ```
 
-Now we enable the cert backend to allow concourse to authenticate to vault.  
+Now we enable the cert backend to allow concourse to authenticate to Vault.  
 
 You can use the following script to enable the cert backend and secrets engine.
 
@@ -167,10 +169,41 @@ ttl=1h
 vault secrets enable -path=concourse/ kv
 ```
 
-Add a sample secret to vault to test the path is enabled
+Add a sample secret to Vault to test the path is writable.
 
 ```console
 $ vault kv put concourse/main/demo_value TEST=HELLOWORLD
 ```
 
-### Exercise #4: Test credentials using a Concourse pipeline
+### Exercise #4: Test secret using a Concourse pipeline
+
+Now to test concourse is able to access the secret stored in Vault.
+
+Login to concourse using the following commands
+
+```console
+$ sudo fly --target tutorial login --concourse-url http://127.0.0.1:8080 -u test -p test
+logging in to team 'main'
+
+
+target saved
+$ sudo fly --target tutorial sync
+version 5.1.0 already matches; skipping
+```
+
+Now use the sample Concourse task to test if we can access the secret and use it in a task.
+
+```console
+$ sudo fly -t tutorial execute -c .ci/sample.yml 
+uploading concourse_ci_vault done
+executing build 1 at http://127.0.0.1:8080/builds/1 
+initializing
+running sh -exc echo $SAMPLE
++ echo HELLOWORLD
+HELLOWORLD
+succeeded
+```
+
+You can also browse to [http://127.0.0.1:8080/builds/1](http://127.0.0.1:8080/builds/1) to see your build in the Concourse web console.
+
+And that's a wrap with this tutorial! Hopefully this demo provides a better understanding of both Concourse CI and Vault and their uses for managing sensitive values.
